@@ -135,6 +135,11 @@ if [[ $PDF_DEST == 1 ]]; then
     }'
 fi
 
+# COMPRESS_WARNINGS: remove empty lines sorrounding warnings {{{2
+# when multiple warnings are printed next to each other, up to two empty lines separate them
+# in particular for the first two latex runs, when there can be lots of warnings (esp. undefined citations or references), this fills much space in the terminal
+COMPRESS_WARNINGS='/warning/ { skip_next_blanks = 1 }'
+
 # COLORIZE_CHAPTER: highlight chapters in the output {{{2
 if [[ $COLOR -eq 1 ]]; then
     COLORIZE_CHAPTER='{
@@ -189,10 +194,13 @@ gawk \
     -v c_warn=$C_WARN -v c_err=$C_ERR -v c_box=$C_BOX -v c_chapter=$C_CHAPTER -v c_reset=$C_RESET \
     -e "$FUNCTIONS" \
     -e 'BEGIN { IGNORECASE=1 }' \
+    -e 'skip_next_blanks && length() == 0 { next }' \
+    -e 'length() > 0 { skip_next_blanks = 0 }' \
     -e '{ changed = 0; lastempty = empty }' \
     -e " $DIST_FILES" \
     -e " $EMPTY_GROUPS" \
     -e " $PDF_DEST" \
+    -e " $COMPRESS_WARNINGS" \
     -e " $COLORIZE_CHAPTER" \
     -e " $PULL_MESSAGES_APART" \
     -e " $COLORIZE_WARN" \
