@@ -44,11 +44,12 @@ Options:
 # if connected to a terminal, uses colors, otherwise uses --color=visual
 function color_auto() {
     if [ -t 1 ]; then
-        COLOR=0
+        COLOR=1
     else
         COLOR=v
     fi
 }
+color_auto
 
 TEX_DIST='/usr/share/texmf|/var/lib/texmf'
 
