@@ -27,6 +27,14 @@ Options:
                     fixed one").
                     Can be handy when compiling individual chapters
                     using \include / \includeonly.
+    --tex-dist <regex>
+                    Set the regular expression that matches files in your TeX-
+                    distribution. Any listing of loaded files from your dis-
+                    tribution will be supressed. Use an empty string to show
+                    these files, too.
+                    Uses GNU awk regular expression, except that you do not
+                    need to escape /. Default:
+                    '$TEX_DIST'
 '
 }
 
@@ -42,6 +50,8 @@ function color_auto() {
     fi
 }
 
+TEX_DIST='/usr/share/texmf|/var/lib/texmf'
+
 # parse arguments {{{1
 while [ $# -ge 1 ]; do
     case $1 in
@@ -56,11 +66,16 @@ while [ $# -ge 1 ]; do
                      *) opt_error "Unknown argument to --color: $mode";;
             esac
             shift;;
+        --tex-dist) TEX_DIST=$2; shift;;
+        --tex-dist=*) TEX_DIST=${1#*=};;
         --help|-h) help; exit 0;;
         *) opt_error "Unknown option $1";;
     esac
     shift
 done
+
+# replace / in $TEX_DIST by the escaped \/ required in awk regular expressions
+TEX_DIST=${TEX_DIST//\//\\\/}
 
 # variables to set color escape codes {{{1
 if [[ $COLOR -eq 1 ]]; then
@@ -87,11 +102,13 @@ C_CHAPTER=$C_BOLD
 
 # DIST_FILES: remove any references to files in the LateX distribution {{{2
 # (e.g. /usr/share/texmf-dist/….sty)
-DIST_FILES='{
-    n = gsub(/\s*[<{]?(\/usr\/share\/texmf|\/var\/lib\/texmf)[^<>(){}]*[>}]?\s*/, "")
-    if (n)
-        changed = 1
-}'
+if [ -n $TEX_DIST ]; then
+    DIST_FILES='{
+        n = gsub(/\s*[<{]?('${TEXT_DIST}')[^<>(){}]*[>}]?\s*/, "")
+        if (n)
+            changed = 1
+    }'
+fi
 
 # EMPTY_GROUPS: remove empty groups "()" {{{2
 EMPTY_GROUPS='{
