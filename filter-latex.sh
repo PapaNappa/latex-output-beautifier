@@ -104,7 +104,7 @@ C_CHAPTER=$C_BOLD
 # (e.g. /usr/share/texmf-dist/….sty)
 if [ -n $TEX_DIST ]; then
     DIST_FILES='{
-        n = gsub(/\s*[<{]?('${TEXT_DIST}')[^<>(){}]*[>}]?\s*/, "")
+        n = gsub(/\s*[<{]?('"${TEX_DIST}"')[^<>(){}]*[>}]?\s*/, "")
         if (n)
             changed = 1
     }'
