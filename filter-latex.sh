@@ -1,36 +1,63 @@
 #!/bin/bash
 
-function error() { #{{{
+function error() { #{{{1
     echo "$0: $1" >&2
     if [[ $# -eq 2 ]]; then
         exit $2
     else
         exit 1
     fi
-} #}}}
+}
+
+function opt_error() { #{{{1
+    local msg="$1"
+    shift
+    error "$msg"$'\n'"Use --help to see a list of available options." "$@"
+}
+
+function help() { #{{{1
+    echo 'Usage: max_print_line=100000 latex | $0 [options ...]
+Options:
+    --color=<mode>  Use colours to highlight errors and warnings. <mode> can be
+                    one of "auto", "never", "always" or "visual".
+                    "visual" tries to replace some colors with text markup,
+                    where appropriate.
+    --pdf-dest      Supress pdftex warnings about non-existing link targets
+                    ("has been referenced but does not exist, replaced by a
+                    fixed one").
+                    Can be handy when compiling individual chapters
+                    using \include / \includeonly.
+'
+}
+
+# default values {{{1
 
 # --color=auto is the default
-if [ -t 1 ]; then
-    COLOR=0
-else
-    COLOR=v
-fi
+# if connected to a terminal, uses colors, otherwise uses --color=visual
+function color_auto() {
+    if [ -t 1 ]; then
+        COLOR=0
+    else
+        COLOR=v
+    fi
+}
 
 # parse arguments {{{1
-while [[ $# -ge 1 ]]; do
+while [ $# -ge 1 ]; do
     case $1 in
         --pdf-dest) PDF_DEST=1;;
         --color=*)
             mode=${1#*=}
             case $mode in
                  never) COLOR=0;;
-                  auto) ! [ -t 1 ]; COLOR=$?;;
+                  auto) color_auto;;
                 always) COLOR=1;;
                 visual) COLOR=v;;
-                     *) error "Unknown argument to --color: $mode";;
+                     *) opt_error "Unknown argument to --color: $mode";;
             esac
             shift;;
-        *) error "Unknown option $1";;
+        --help|-h) help; exit 0;;
+        *) opt_error "Unknown option $1";;
     esac
     shift
 done
