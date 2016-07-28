@@ -152,18 +152,25 @@ PULL_MESSAGES_APART='{
     $0 = gensub(/(\w|\.)\s*\[/, "\\1\n[", "g")
 }'
 
-# at this point, one record may contain multiple lines, {{{2
+# }}}2
+
+# at this point, one record may contain multiple lines,
 # so case must be taken to affect only single output lines
 
-# COLORIZE: colorize errors and warnings {{{2
-COLORIZE='
-    /warning/ { gsub(/[^\n]*warning[^\n]*/, c_warn "&" c_reset) }
-    /error/ { gsub(/[^\n]*error[^\n]*/, c_err "&" c_reset) }
-    /underfull|overfull/ { gsub(/[^\n]*(overfull|underfull)[^\n]*/, c_box "&" c_reset) }
-'
+# COLORIZE_*: colorize errors and warnings {{{2
+if [ $COLOR -eq 1 ]; then
+    color_warn_regexp='warning|^Runaway argument'
+    COLORIZE_WARN='/'"$color_warn_regexp"'/ { gsub(/[^\n]*('"$color_warn_regexp"')[^\n]*/, c_warn "&" c_reset) }'
+    color_error_regexp='error|^!|^[^(){}<>:]+\.tex:[0-9]+:'
+    COLORIZE_ERROR='/'"$color_error_regexp"'/ { gsub(/[^\n]*('"$color_error_regexp"')[^\n]*/, c_err "&" c_reset) }'
+    color_boxes_regexp='underfull|overfull'
+    COLORIZE_BOXES='/'"$color_boxes_regexp"'/ { gsub(/[^\n]*('"$color_boxes_regexp"')[^\n]*/, c_box "&" c_reset) }'
+fi
 
 # MERGE_EMPTY: merge multiple empty lines {{{2
 MERGE_EMPTY='empty && lastempty { next }'
+
+# }}}1
 
 # utility functions {{{1
 
@@ -188,7 +195,9 @@ gawk \
     -e " $PDF_DEST" \
     -e " $COLORIZE_CHAPTER" \
     -e " $PULL_MESSAGES_APART" \
-    -e " $COLORIZE" \
+    -e " $COLORIZE_WARN" \
+    -e " $COLORIZE_ERROR" \
+    -e " $COLORIZE_BOXES" \
     -e '{ empty = $0 ~ /^\s*$/ }' \
     -e " $MERGE_EMPTY" \
     -e '{ if (!changed || !empty) print }'
