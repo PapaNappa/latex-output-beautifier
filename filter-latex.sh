@@ -99,6 +99,8 @@ C_ERR=$C_RED
 C_BOX=$C_MAGENTA
 C_CHAPTER=$C_BOLD
 
+# }}}1
+
 # different snippets of AWK code for different cases {{{1
 
 # DIST_FILES: remove any references to files in the LateX distribution {{{2
@@ -114,9 +116,12 @@ fi
 # EMPTY_GROUPS: remove empty groups "()" {{{2
 EMPTY_GROUPS='{
     do {
-        n = gsub(/\s*\(\s*\)\s*/, "")
-        if (n)
+        n = gsub(/\s*\(\s*\)\s*/, " ")
+        if (n) {
+            gsub(/\s+/, " ") # merge multiple spaces
+            gsub(/^\s/, "") # trim
             changed = 1
+        }
     } while (n)
 }'
 
@@ -157,7 +162,7 @@ COLORIZE='
     /underfull|overfull/ { gsub(/[^\n]*(overfull|underfull)[^\n]*/, c_box "&" c_reset) }
 '
 
-# MERGE_EMPTY: merge multiple empty lines
+# MERGE_EMPTY: merge multiple empty lines {{{2
 MERGE_EMPTY='empty && lastempty { next }'
 
 # utility functions {{{1
@@ -184,7 +189,7 @@ gawk \
     -e " $COLORIZE_CHAPTER" \
     -e " $PULL_MESSAGES_APART" \
     -e " $COLORIZE" \
-    -e '{ empty = length() == 0 }' \
+    -e '{ empty = $0 ~ /^\s*$/ }' \
     -e " $MERGE_EMPTY" \
     -e '{ if (!changed || !empty) print }'
 
