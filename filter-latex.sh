@@ -18,23 +18,23 @@ function opt_error() { #{{{1
 function help() { #{{{1
     echo 'Usage: max_print_line=100000 latex | $0 [options ...]
 Options:
-    --color=<mode>  Use colours to highlight errors and warnings. <mode> can be
-                    one of "auto", "never", "always" or "visual".
-                    "visual" tries to replace some colors with text markup,
-                    where appropriate.
-    --pdf-dest      Supress pdftex warnings about non-existing link targets
-                    ("has been referenced but does not exist, replaced by a
-                    fixed one").
-                    Can be handy when compiling individual chapters
-                    using \include / \includeonly.
+    --color=<mode>
+            Use colours to highlight errors and warnings. <mode> can be one of
+            "auto", "never", "always" or "visual".
+            "visual" tries to replace some colors with text markup,
+            where appropriate.
+    --pdf-dest
+            Supress pdftex warnings about non-existing link targets ("has been
+            referenced but does not exist, replaced by a fixed one").
+            Can be handy when compiling individual chapters
+            using \include / \includeonly.
     --tex-dist <regex>
-                    Set the regular expression that matches files in your TeX-
-                    distribution. Any listing of loaded files from your dis-
-                    tribution will be supressed. Use an empty string to show
-                    these files, too.
-                    Uses GNU awk regular expression, except that you do not
-                    need to escape /. Default:
-                    '$TEX_DIST'
+            Set the regular expression that matches files in your TeX-
+            distribution. Any listing of loaded files from your distribution
+            will be supressed. Use an empty string to show these files, too.
+            Uses GNU awk regular expression, except that you do not
+            need to escape /. Default:
+            '$TEX_DIST'
 '
 }
 
