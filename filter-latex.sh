@@ -51,7 +51,10 @@ function color_auto() {
 }
 color_auto
 
-TEX_DIST='/usr/share/texmf|/var/lib/texmf'
+# values may also be set using environment variables
+# thus, use default values only when the variables are not set
+
+[ -z $TEX_DIST] && TEX_DIST='/usr/share/texmf|/var/lib/texmf'
 
 # parse arguments {{{1
 while [ $# -ge 1 ]; do
