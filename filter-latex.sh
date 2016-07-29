@@ -35,6 +35,18 @@ Options:
             Uses GNU awk regular expression, except that you do not
             need to escape /. Default:
             '$TEX_DIST'
+    --graphics[=<mode>]
+            Filter all occurances of included graphics according to <mode>.
+            If <mode> is not given, defaults to "loading,reference,path".
+            <mode> can be a comma-separated list of the following values:
+            * loading: filter loaded graphics (includes dimensions)
+            * reference: filter referenced graphics (\includegraphics),
+                         does not contain dimensions
+            * combined: keep exactly one of these
+            * placement: filter graphics placed at pages
+            * all: eq. to "loading,reference,placement"
+            * path: filter path, only keep filename
+            The default value is "combined,placement,path"
 '
 }
 
@@ -55,6 +67,7 @@ color_auto
 # thus, use default values only when the variables are not set
 
 [ -z $TEX_DIST] && TEX_DIST='/usr/share/texmf|/var/lib/texmf'
+[ -z $GRAPHICS] && GRAPHICS=combined,placement,path
 
 # parse arguments {{{1
 while [ $# -ge 1 ]; do
@@ -71,6 +84,15 @@ while [ $# -ge 1 ]; do
             esac;;
         --tex-dist) TEX_DIST=$2; shift;;
         --tex-dist=*) TEX_DIST=${1#*=};;
+        --graphics) GRAPHICS="loading,reference,path";;
+        --graphics=*)
+            mode=${1#*=}
+            case $mode in
+                 all) GRAPHICS="loading,reference,placement";;
+                 none) GRAPHICS="";;
+                 *) GRAPHICS="$mode";;
+            esac
+            shift;;
         --help|-h) help; exit 0;;
         *) opt_error "Unknown option $1";;
     esac
@@ -131,6 +153,58 @@ if [[ $PDF_DEST == 1 ]]; then
         changed += gsub(/pdfTeX warning \(dest\):.*has been referenced but does not exist, replaced by a fixed one/, "")
     }'
 fi
+
+# FILTER_GRAPHICS: reduce the amount of listing included graphic files {{{2
+# Each included graphic is usually mentioned three times: time of first reference (loading), once for each actual reference, and once for every actual float placement
+# The first loading of images has the form <path/to/image.pdf, id=42, 217.3pt x 200.61pt>
+# Every reference (\includegraphics) has the form <use path/to/image.pdf>
+# When the figure float is placed on page 13, the page is printed as [13 <path/to/image.pdf>]
+
+# Different strategies may be used to reduce the output, depending on the user's preferences
+# loading: only print first loading
+# reference: only print references
+# combined: print first loading, and any subsequent references (thus, image size is printed, which may be useful for debugging graphics)
+# placement: only show placements
+# none: filter all
+# all: filter none
+
+graphics_regex_load='<[^,>]+, id=[0-9]+, [0-9.]+pt x [0-9.]+pt>'
+graphics_regex_reference='<use [^>]+>'
+graphics_regex_place='<[^>]+>'
+graphics_regex_pathfile='([^,>]*\/)?([^\/,>]+)'
+
+FILTER_GRAPHICS='{ n = 0'$'\n'
+
+for g in ${GRAPHICS//,/ }; do
+    case $g in
+        load*) FILTER_GRAPHICS+='n += gsub(/'"$graphics_regex_load"'/, "")'$'\n';;
+         ref*) FILTER_GRAPHICS+='n += gsub(/'"$graphics_regex_reference"'/, "")'$'\n';;
+        plac*) FILTER_GRAPHICS+='
+                # TODO: extract all [page ...] blocks and, for each, remove every $graphics_regex_place
+                # this should ensure that any other hints are not removed
+                $0 = gensub(/\[([0-9]+)(\s*'"$graphics_regex_place"'\s*)+\]/, "[\\1]", "g")
+            ';;
+        comb*) FILTER_GRAPHICS+='
+                # exploit the fact that every loading is immediately followed by a reference
+                # thus, replace <load> <reference> by <load>, leave the remaining references as-is
+                $0 = gensub(/('"$graphics_regex_load"')\s*'"$graphics_regex_reference"'/, "\\1", "g")
+            ';;
+        path) FILTER_GRAPHICS+='
+                $0 = gensub(/<'"$graphics_regex_pathfile"', id=/, "<\\2, id=", "g")
+                $0 = gensub(/<use '"$graphics_regex_pathfile"'>/, "<use \\2>", "g")
+                # TODO multiple graphics on one page
+                $0 = gensub(/\[([0-9]+) <'"$graphics_regex_pathfile"'>\]/, "[\\1 <\\3>]", "g")
+            ';;
+        *) error "Invalid value of \$GRAPHICS: $GRAPHICS" 2
+    esac
+done
+
+FILTER_GRAPHICS+='
+        if (n) {
+            merge_space()
+            changed = 1
+        }
+    }'
 
 # COMPRESS_WARNINGS: remove empty lines sorrounding warnings {{{2
 # when multiple warnings are printed next to each other, up to two empty lines separate them
@@ -201,6 +275,7 @@ gawk \
     -e " $DIST_FILES" \
     -e " $EMPTY_GROUPS" \
     -e " $PDF_DEST" \
+    -e " $FILTER_GRAPHICS" \
     -e " $COMPRESS_WARNINGS" \
     -e " $COLORIZE_CHAPTER" \
     -e " $PULL_MESSAGES_APART" \
