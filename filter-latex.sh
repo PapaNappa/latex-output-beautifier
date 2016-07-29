@@ -65,8 +65,7 @@ while [ $# -ge 1 ]; do
                 always) COLOR=1;;
                 visual) COLOR=v;;
                      *) opt_error "Unknown argument to --color: $mode";;
-            esac
-            shift;;
+            esac;;
         --tex-dist) TEX_DIST=$2; shift;;
         --tex-dist=*) TEX_DIST=${1#*=};;
         --help|-h) help; exit 0;;
@@ -107,9 +106,7 @@ C_CHAPTER=$C_BOLD
 # (e.g. /usr/share/texmf-dist/….sty)
 if [ -n $TEX_DIST ]; then
     DIST_FILES='{
-        n = gsub(/\s*[<{]?('"${TEX_DIST}"')[^<>(){}]*[>}]?\s*/, "")
-        if (n)
-            changed = 1
+        changed += gsub(/\s*[<{]?('"${TEX_DIST}"')[^<>(){}]*[>}]?\s*/, "")
     }'
 fi
 
@@ -118,8 +115,7 @@ EMPTY_GROUPS='{
     do {
         n = gsub(/\s*\(\s*\)\s*/, " ")
         if (n) {
-            gsub(/\s+/, " ") # merge multiple spaces
-            gsub(/^\s/, "") # trim
+            merge_space()
             changed = 1
         }
     } while (n)
@@ -129,9 +125,7 @@ EMPTY_GROUPS='{
 # (happens e.g. when compiling only individual chapters with references to other chapters)
 if [[ $PDF_DEST == 1 ]]; then
     PDF_DEST='{
-        n = gsub(/pdfTeX warning \(dest\):.*has been referenced but does not exist, replaced by a fixed one/, "")
-        if (n)
-            changed = 1
+        changed += gsub(/pdfTeX warning \(dest\):.*has been referenced but does not exist, replaced by a fixed one/, "")
     }'
 fi
 
@@ -184,6 +178,10 @@ function repeat(str, n,    rep, i ) {
     for (i = 0 ; i < n; i++)
         rep = rep str
     return rep
+}
+function merge_space() {
+    gsub(/\s+/, " ") # merge multiple spaces
+    gsub(/^\s/, "") # trim
 }
 '
 
