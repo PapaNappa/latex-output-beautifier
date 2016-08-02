@@ -28,13 +28,16 @@ Options:
             referenced but does not exist, replaced by a fixed one").
             Can be handy when compiling individual chapters
             using \include / \includeonly.
-    --tex-dist <regex>
+    --tex-dist=<regex>
             Set the regular expression that matches files in your TeX-
             distribution. Any listing of loaded files from your distribution
             will be supressed. Use an empty string to show these files, too.
             Uses GNU awk regular expression, except that you do not
             need to escape /. Default:
             '$TEX_DIST'
+    --strip-path=<regex>
+            Strip any path components matching regex. This results in shorter
+            filenames.
     --graphics[=<mode>]
             Filter all occurances of included graphics according to <mode>.
             If <mode> is not given, defaults to "loading,reference,path".
@@ -82,8 +85,13 @@ while [ $# -ge 1 ]; do
                 visual) COLOR=v;;
                      *) opt_error "Unknown argument to --color: $mode";;
             esac;;
+
         --tex-dist) TEX_DIST=$2; shift;;
         --tex-dist=*) TEX_DIST=${1#*=};;
+
+        --strip-path) STRIP_PATH=$2; shift;;
+        --strip-path=*) STRIP_PATH=${1#*=};;
+
         --graphics) GRAPHICS="loading,reference,path";;
         --graphics=*)
             mode=${1#*=}
@@ -93,14 +101,16 @@ while [ $# -ge 1 ]; do
                  *) GRAPHICS="$mode";;
             esac
             shift;;
+
         --help|-h) help; exit 0;;
         *) opt_error "Unknown option $1";;
     esac
     shift
 done
 
-# replace / in $TEX_DIST by the escaped \/ required in awk regular expressions
+# replace / in regexes by the escaped \/ required in awk regular expressions
 TEX_DIST=${TEX_DIST//\//\\\/}
+STRIP_PATH=${STRIP_PATH//\//\\\/}
 
 # variables to set color escape codes {{{1
 if [[ $COLOR -eq 1 ]]; then
@@ -133,6 +143,11 @@ if [ -n $TEX_DIST ]; then
     DIST_FILES='{
         changed += gsub(/\s*[<{]?('"${TEX_DIST}"')[^<>(){}]*[>}]?\s*/, "")
     }'
+fi
+
+# STRIP_PATH: strip path components {{{2
+if [[ -n $STRIP_PATH ]]; then
+    STRIP_PATH='{ changed += gsub(/'"$STRIP_PATH"'/, "") }'
 fi
 
 # EMPTY_GROUPS: remove empty groups "()" {{{2
@@ -273,6 +288,7 @@ gawk \
     -e 'length() > 0 { skip_next_blanks = 0 }' \
     -e '{ changed = 0; lastempty = empty }' \
     -e " $DIST_FILES" \
+    -e " $STRIP_PATH" \
     -e " $EMPTY_GROUPS" \
     -e " $PDF_DEST" \
     -e " $FILTER_GRAPHICS" \
