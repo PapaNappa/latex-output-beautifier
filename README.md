@@ -24,3 +24,12 @@ Use `--help` to see a list of available options.
 
 * GNU awk
 * bash
+
+# Tips
+
+I compile LaTeX using a Makefile out of vim.
+However, the vim console emulator allows no scrolling and does not support colours.
+Therefore, I have a separate terminal window (on a secondary screen) where I compile LaTeX.
+To automatically create such a window and run make out of vim, see [make-session.sh][1].
+
+[1]: https://gist.github.com/PapaNappa/b2b03fa7d32fff3242e95ad5a5a9c8c7
