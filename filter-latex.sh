@@ -58,7 +58,7 @@ Options:
 # --color=auto is the default
 # if connected to a terminal, uses colors, otherwise uses --color=visual
 function color_auto() {
-    if [ -t 1 ]; then
+    if [[ -t 1 ]]; then
         COLOR=1
     else
         COLOR=v
@@ -73,7 +73,7 @@ color_auto
 [ -z $GRAPHICS] && GRAPHICS=combined,placement,path
 
 # parse arguments {{{1
-while [ $# -ge 1 ]; do
+while [[ $# -ge 1 ]]; do
     case $1 in
         --pdf-dest) PDF_DEST=1;;
         --color=*)
@@ -139,7 +139,7 @@ C_CHAPTER=$C_BOLD
 
 # DIST_FILES: remove any references to files in the LateX distribution {{{2
 # (e.g. /usr/share/texmf-dist/….sty)
-if [ -n $TEX_DIST ]; then
+if [[ -n $TEX_DIST ]]; then
     DIST_FILES='{
         changed += gsub(/\s*[<{]?('"${TEX_DIST}"')[^<>(){}]*[>}]?\s*/, "")
     }'
@@ -249,7 +249,7 @@ PULL_MESSAGES_APART='{
 # so case must be taken to affect only single output lines
 
 # COLORIZE_*: colorize errors and warnings {{{2
-if [ $COLOR -eq 1 ]; then
+if [[ $COLOR -eq 1 ]]; then
     color_warn_regexp='warning|^Runaway argument'
     COLORIZE_WARN='/'"$color_warn_regexp"'/ { gsub(/[^\n]*('"$color_warn_regexp"')[^\n]*/, c_warn "&" c_reset) }'
     color_error_regexp='error|^!|^[^(){}<>:]+\.tex:[0-9]+:'
