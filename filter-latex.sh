@@ -243,6 +243,10 @@ PULL_MESSAGES_APART='{
     $0 = gensub(/(\w|\.)\s*\[/, "\\1\n[", "g")
 }'
 
+# MERGE_PAGES: merge consecutive pages without any messages between: [3] [4] [5] → [3-5] {{{2
+MERGE_PAGES='{
+    $0 = gensub(/\[([0-9]+)\] (\[[0-9]+\] )*\[([0-9]+)\]/, "[\\1-\\3]", "g")
+}'
 # }}}2
 
 # at this point, one record may contain multiple lines,
@@ -293,6 +297,7 @@ gawk \
     -e " $PDF_DEST" \
     -e " $FILTER_GRAPHICS" \
     -e " $COMPRESS_WARNINGS" \
+    -e " $MERGE_PAGES" \
     -e " $COLORIZE_CHAPTER" \
     -e " $PULL_MESSAGES_APART" \
     -e " $COLORIZE_WARN" \
