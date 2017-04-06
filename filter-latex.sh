@@ -100,7 +100,7 @@ while [[ $# -ge 1 ]]; do
                  none) GRAPHICS="";;
                  *) GRAPHICS="$mode";;
             esac
-            shift;;
+            ;;
 
         --help|-h) help; exit 0;;
         *) opt_error "Unknown option $1";;
