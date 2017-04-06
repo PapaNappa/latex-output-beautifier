@@ -40,16 +40,18 @@ Options:
             filenames.
     --graphics[=<mode>]
             Filter all occurances of included graphics according to <mode>.
-            If <mode> is not given, defaults to "loading,reference,path".
+            <mode> defines what will be shown in the output.
             <mode> can be a comma-separated list of the following values:
-            * loading: filter loaded graphics (includes dimensions)
-            * reference: filter referenced graphics (\includegraphics),
+            * loading: show loaded graphics (includes dimensions)
+            * reference: show referenced graphics (\includegraphics),
                          does not contain dimensions
-            * combined: keep exactly one of these
-            * placement: filter graphics placed at pages
-            * all: eq. to "loading,reference,placement"
-            * path: filter path, only keep filename
-            The default value is "combined,placement,path"
+            * combined: show exactly one of these
+            * placement: show graphics placed at pages
+            * path: show the complete path instead of just the filename
+            * all: show all; do not filter out anything
+            * none: exclude all graphics from the output
+            If <mode> is not given, defaults to "combined".
+            Without this option, the default value is "combined,placement,path".
 '
 }
 
@@ -92,11 +94,11 @@ while [[ $# -ge 1 ]]; do
         --strip-path) STRIP_PATH=$2; shift;;
         --strip-path=*) STRIP_PATH=${1#*=};;
 
-        --graphics) GRAPHICS="loading,reference,path";;
+        --graphics) GRAPHICS="combined";;
         --graphics=*)
             mode=${1#*=}
             case $mode in
-                 all) GRAPHICS="loading,reference,placement";;
+                 all) GRAPHICS="loading,reference,placement,path";;
                  none) GRAPHICS="";;
                  *) GRAPHICS="$mode";;
             esac
@@ -179,9 +181,28 @@ fi
 # loading: only print first loading
 # reference: only print references
 # combined: print first loading, and any subsequent references (thus, image size is printed, which may be useful for debugging graphics)
-# placement: only show placements
-# none: filter all
-# all: filter none
+# placement: show placements
+# none: show nothing
+# all: show everything
+
+# GRAPHICS contains all elements that shall be shown
+# invert this set to determine what shall be filtered out from the output
+FILTER_GRAPHICS_LOAD=1
+FILTER_GRAPHICS_REFERENCE=1
+FILTER_GRAPHICS_COMBINED=0 # except for combined, which is a positive switch
+FILTER_GRAPHICS_PLACEMENT=1
+FILTER_GRAPHICS_PATH=1
+
+for g in ${GRAPHICS//,/ }; do
+    case $g in
+        load*) FILTER_GRAPHICS_LOAD=0;;
+         ref*) FILTER_GRAPHICS_REFERENCE=0;;
+        comb*) FILTER_GRAPHICS_COMBINED=1; FILTER_GRAPHICS_LOAD=0; FILTER_GRAPHICS_REFERENCE=0;;
+        plac*) FILTER_GRAPHICS_PLACEMENT=0;;
+         path) FILTER_GRAPHICS_PATH=0;;
+            *) error "Invalid value of \$GRAPHICS: $GRAPHICS" 2
+    esac
+done
 
 graphics_regex_load='<[^,>]+, id=[0-9]+, [0-9.]+pt x [0-9.]+pt>'
 graphics_regex_reference='<use [^>]+>'
@@ -190,29 +211,34 @@ graphics_regex_pathfile='([^,>]*\/)?([^\/,>]+)'
 
 FILTER_GRAPHICS='{ n = 0'$'\n'
 
-for g in ${GRAPHICS//,/ }; do
-    case $g in
-        load*) FILTER_GRAPHICS+='n += gsub(/'"$graphics_regex_load"'/, "")'$'\n';;
-         ref*) FILTER_GRAPHICS+='n += gsub(/'"$graphics_regex_reference"'/, "")'$'\n';;
-        plac*) FILTER_GRAPHICS+='
-                # TODO: extract all [page ...] blocks and, for each, remove every $graphics_regex_place
-                # this should ensure that any other hints are not removed
-                $0 = gensub(/\[([0-9]+)(\s*'"$graphics_regex_place"'\s*)+\]/, "[\\1]", "g")
-            ';;
-        comb*) FILTER_GRAPHICS+='
-                # exploit the fact that every loading is immediately followed by a reference
-                # thus, replace <load> <reference> by <load>, leave the remaining references as-is
-                $0 = gensub(/('"$graphics_regex_load"')\s*'"$graphics_regex_reference"'/, "\\1", "g")
-            ';;
-        path) FILTER_GRAPHICS+='
-                $0 = gensub(/<'"$graphics_regex_pathfile"', id=/, "<\\2, id=", "g")
-                $0 = gensub(/<use '"$graphics_regex_pathfile"'>/, "<use \\2>", "g")
-                # TODO multiple graphics on one page
-                $0 = gensub(/\[([0-9]+) <'"$graphics_regex_pathfile"'>\]/, "[\\1 <\\3>]", "g")
-            ';;
-        *) error "Invalid value of \$GRAPHICS: $GRAPHICS" 2
-    esac
-done
+if [ $FILTER_GRAPHICS_LOAD == 1 ]; then
+    FILTER_GRAPHICS+='n += gsub(/'"$graphics_regex_load"'/, "")'$'\n'
+fi
+if [ $FILTER_GRAPHICS_REFERENCE == 1 ]; then
+    FILTER_GRAPHICS+='n += gsub(/'"$graphics_regex_reference"'/, "")'$'\n'
+fi
+if [ $FILTER_GRAPHICS_COMBINED == 1 ]; then
+    FILTER_GRAPHICS+='
+        # exploit the fact that every loading is immediately followed by a reference
+        # thus, replace <load> <reference> by <load>, leave the remaining references as-is
+        $0 = gensub(/('"$graphics_regex_load"')\s*'"$graphics_regex_reference"'/, "\\1", "g")
+    '
+fi
+if [ $FILTER_GRAPHICS_PLACEMENT == 1 ]; then
+    FILTER_GRAPHICS+='
+        # TODO: extract all [page ...] blocks and, for each, remove every $graphics_regex_place
+        # this should ensure that any other hints are not removed
+        $0 = gensub(/\[([0-9]+)(\s*'"$graphics_regex_place"'\s*)+\]/, "[\\1]", "g")
+    '
+fi
+if [ $FILTER_GRAPHICS_PATH == 1 ]; then
+    FILTER_GRAPHICS+='
+        $0 = gensub(/<'"$graphics_regex_pathfile"', id=/, "<\\2, id=", "g")
+        $0 = gensub(/<use '"$graphics_regex_pathfile"'>/, "<use \\2>", "g")
+        # TODO multiple graphics on one page
+        $0 = gensub(/\[([0-9]+) <'"$graphics_regex_pathfile"'>\]/, "[\\1 <\\3>]", "g")
+    '
+fi
 
 FILTER_GRAPHICS+='
         if (n) {
